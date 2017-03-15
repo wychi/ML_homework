@@ -13,8 +13,8 @@ factors = np.delete(factors, 10)
 
 # order matters
 # days = ['2014/1/1']
-#factors = [u'PM10', u'PM2.5']
-factors = [u'PM10', u'PM2.5', u'WIND_DIREC', u'WIND_SPEED']
+factors = [u'PM10', u'PM2.5']
+#factors = [u'PM10', u'PM2.5', u'WIND_DIREC', u'WIND_SPEED']
 
 frames = []
 for day in days:
@@ -28,9 +28,6 @@ training['b'] = 1
 
 testing = training.iloc[-5:,:]
 training = training.iloc[:-5,:]
-
-print testing
-print training
 
 def test(w):
 	print '====test======'
@@ -48,11 +45,12 @@ rate = init_rate
 w = np.ones(len(factors) + 1)
 #w = np.random.rand( len(factors) + 1)
 #w= np.array([  0.70403291, 11.17861785])
-w = np.array([ 0.12668465  ,0.73373688  ,0.00877731  ,0.75455953 ,0.92578519])
+#w = np.array([ 0.12668465  ,0.73373688  ,0.00877731  ,0.75455953 ,0.92578519])
+
 print factors
 print days
 print 'w=', w
-print 'rate: ', rate
+print 'rate=', rate
 print '---- start -----'
 
 test(w)
@@ -73,22 +71,18 @@ while True :
 	# update
 	w = w - dw * rate
 	rate = init_rate/np.sqrt(loop+1)
-	#print 'rate: ', rate
-
-	# DEBUG
-	# if(loop == 10):
-	# 	break;
 
 	L = delta.sum()
+	print 'iter #',loop,' Lost= ', L, 'rate= ', rate
+
 	if(loop % 1000 == 0):
-		print 'Lost: ', L
-		print 'rate: ', rate
+		print 'Lost= ', L
+		print 'rate= ', rate
 		print w
 		print '----', loop, '-----'
+
 	if(abs(L) < 0.01):
 		break
 
-print 'Lost: ', L
-print 'rate: ', rate
-print w
+print '---- end -----'
 test(w)
