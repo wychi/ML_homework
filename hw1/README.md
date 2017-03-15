@@ -1,3 +1,6 @@
+### Impl
+
+[imp1](http://www.bogotobogo.com/python/python_numpy_batch_gradient_descent_algorithm.php)
 
 ### 取某一天，某一個測項
 ```
