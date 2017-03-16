@@ -25,4 +25,12 @@ training.plot(linestyle='', marker='o', ax = ax, y='PM10', label='PM10')
 
 training.plot(kind="scatter", x="PM2.5", y="PM10")
 training.plot(kind="scatter", x="PM2.5", y="WIND_DIREC")
+
+
+plotNum = 1
+for factor in factors:
+	ax = plt.subplot(4,5, plotNum)
+	plotNum += 1
+	training.plot(kind="scatter", x="PM2.5", y=factor, ax =ax)
+
 plt.show()

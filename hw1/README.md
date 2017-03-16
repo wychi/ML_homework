@@ -14,3 +14,4 @@
 [1 rows x 27 columns]
 ```
 
+![PM25 vs all](./scatter_PM25_vs_all.png)
