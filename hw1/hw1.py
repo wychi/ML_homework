@@ -9,7 +9,7 @@ import sys, getopt
 
 def main(argv):
 	try:
-		opts, args = getopt.getopt(sys.argv[1:],"hi:r:",["iteration=","learning_rate="])
+		opts, args = getopt.getopt(sys.argv[1:],"hi:r:v:",["iteration=","learning_rate=", "verbose="])
 		print args
 		print opts
 		#gradient_descent()
@@ -17,8 +17,10 @@ def main(argv):
 		print 'test.py -i <iteration> -r <learning_rate>'
 		sys.exit(2)
 
-	max_iteration = 1000000
-	init_learning_rate = 0.001
+	max_iteration = 100000000
+	init_learning_rate = 0.000001
+	gradientStop = 0.01
+	verbose = False
 
 	for opt, arg in opts:
 		if opt == '-h':
@@ -28,8 +30,10 @@ def main(argv):
 			max_iteration = int(arg)
 		elif opt in ("-r", "--learning_rate"):
 			init_learning_rate = float(arg)
+		elif opt in ("-v", "--verbose"):
+			verbose = True
 
-	gradient_descent(max_iteration, init_learning_rate)
+	gradient_descent(max_iteration, init_learning_rate, gradientStop, verbose)
 	
 
 def test(testing, w):
@@ -41,7 +45,7 @@ def test(testing, w):
 		print 'answer= ', w.dot(test)
 	print '  '
 
-def gradient_descent(max_iteration, init_learning_rate):
+def gradient_descent(max_iteration, init_learning_rate, gradientStop, verbose):
 	df = pd.read_csv('./data/train.csv', na_values='NR', encoding='big5')
 
 	days = df[u'日期'].unique()[:5]
@@ -51,8 +55,8 @@ def gradient_descent(max_iteration, init_learning_rate):
 
 	# order matters
 	# days = ['2014/1/1']
-	factors = [u'PM10', u'PM2.5']
-	#factors = [u'PM10', u'PM2.5', u'WIND_DIREC', u'WIND_SPEED']
+	#factors = [u'PM10', u'PM2.5']
+	factors = [u'PM10', u'PM2.5', u'WIND_DIREC', u'WIND_SPEED']
 
 	frames = []
 	for day in days:
@@ -87,24 +91,28 @@ def gradient_descent(max_iteration, init_learning_rate):
 
 	test(testing, w)
 	L_history = []
-
-	while loop < max_iteration :
+	gradientChange = 1
+	while True :
 		loop = loop + 1
-
 		error = np.subtract(y, x.dot(w))
 		dw = np.dot(error, -x)
+		gradientChange = np.dot(dw, dw)
 		w = w - dw * rate
-		rate = init_rate/np.sqrt(loop+1)
-		L = error.sum()
+		rate = init_rate
+		L = np.sqrt(np.dot(error, error))
 		
-		if(loop % 10 == 0):
-			print 'iter #',loop,' Lost= ', L, 'rate= ', rate
+		if(verbose and loop % 10 == 0):
+			print 'iter #',loop,' Lost= ', L, 'rate= ', rate, 'gradient', gradientChange
 			L_history.append(L)
 
-		if(abs(L) < 0.01):
+		if(loop > max_iteration):
+			print 'stop. exceed max iteration'
 			break
-
+		if(gradientChange < gradientStop):
+			print 'stop. gradientChange small enough', gradientChange
+			break
 		if(np.isnan(L) or np.isinf(L)):
+			print 'stop inf or nan'
 			break
 
 	print '---- end -----'
