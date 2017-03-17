@@ -10,9 +10,6 @@ import sys, getopt
 def main(argv):
 	try:
 		opts, args = getopt.getopt(sys.argv[1:],"hi:r:v:",["iteration=","learning_rate=", "verbose="])
-		print args
-		print opts
-		#gradient_descent()
 	except getopt.GetoptError:
 		print 'test.py -i <iteration> -r <learning_rate>'
 		sys.exit(2)
@@ -33,7 +30,7 @@ def main(argv):
 		elif opt in ("-v", "--verbose"):
 			verbose = True
 
-	gradient_descent(max_iteration, init_learning_rate, gradientStop, verbose)
+	train(max_iteration, init_learning_rate, gradientStop, verbose)
 	
 
 def test(testing, w):
@@ -45,9 +42,8 @@ def test(testing, w):
 		print 'answer= ', w.dot(test)
 	print '  '
 
-def gradient_descent(max_iteration, init_learning_rate, gradientStop, verbose):
+def train(max_iteration, init_learning_rate, gradientStop, verbose):
 	df = pd.read_csv('./data/train.csv', na_values='NR', encoding='big5')
-
 	days = df[u'日期'].unique()[:5]
 	# delete('RAINFALL')
 	factors = df[u'測項'].unique()
@@ -58,38 +54,44 @@ def gradient_descent(max_iteration, init_learning_rate, gradientStop, verbose):
 	#factors = [u'PM10', u'PM2.5']
 	factors = [u'PM10', u'PM2.5', u'WIND_DIREC', u'WIND_SPEED']
 
+	print factors
+	print days
+
 	frames = []
 	for day in days:
 		dfByDay = df[df[u'日期'].isin([day]) & df[u'測項'].isin(factors)].iloc[:, 3:]
 		dfByDay.index = factors
 		frames.append(dfByDay)
-
 	training = pd.concat(frames, axis = 1)
 	training = training.T
 	training['b'] = 1
 
-	testing = training.iloc[-5:,:]
-	training = training.iloc[:-5,:]
-
-	loop = 0
-	init_rate = init_learning_rate
-	rate = init_rate
-	# [w1, w2, w3, b]
-	w = np.ones(len(factors) + 1)
-	#w = np.random.rand( len(factors) + 1)
-	#w= np.array([  0.70403291, 11.17861785])
-	#w = np.array([ 0.12668465  ,0.73373688  ,0.00877731  ,0.75455953 ,0.92578519])
-
-	print factors
-	print days
-	print 'w=', w
-	print 'rate=', rate
-	print '---- start -----'
-
 	x = training[:-1]
 	y = training['PM2.5'][1:]
 
-	test(testing, w)
+	# [w1, w2, w3, ..., b]
+	#w = np.random.rand( len(factors) + 1)
+	#w= np.array([  0.70403291, 11.17861785])
+	#w = np.array([ 0.12668465  ,0.73373688  ,0.00877731  ,0.75455953 ,0.92578519])
+	w = np.ones(len(factors) + 1)
+
+	wStar = gradient_descent(w, x, y, max_iteration, init_learning_rate, gradientStop, verbose)
+	validate(wStar, x, y)
+
+def validate(w, x, y):
+	error = np.subtract(y, x.dot(w))
+	errorRate = error / y;
+	print 'error rate', np.average(np.fabs(errorRate))
+
+def gradient_descent(w, x, y, max_iteration, init_learning_rate, gradientStop, verbose):
+
+	loop = 0
+	rate = init_learning_rate
+
+	print 'init w=', w
+	print 'inti rate=', init_learning_rate
+	print '---- start -----'
+
 	L_history = []
 	gradientChange = 1
 	while True :
@@ -98,11 +100,12 @@ def gradient_descent(max_iteration, init_learning_rate, gradientStop, verbose):
 		dw = np.dot(error, -x)
 		gradientChange = np.dot(dw, dw)
 		w = w - dw * rate
-		rate = init_rate
+		#rate = init_rate
 		L = np.sqrt(np.dot(error, error))
 		
 		if(verbose and loop % 10 == 0):
-			print 'iter #',loop,' Lost= ', L, 'rate= ', rate, 'gradient', gradientChange
+			errorRate = np.average(np.fabs(error / y))
+			print 'iter #',loop,' Lost= ', L, 'error', errorRate, 'rate= ', rate, 'gradient', gradientChange
 			L_history.append(L)
 
 		if(loop > max_iteration):
@@ -117,10 +120,11 @@ def gradient_descent(max_iteration, init_learning_rate, gradientStop, verbose):
 
 	print '---- end -----'
 
-	test(testing, w)
+	# plt.plot(L_history[3:])
+	# plt.show()
 
-	plt.plot(L_history[3:])
-	plt.show()
+	return w
+
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
