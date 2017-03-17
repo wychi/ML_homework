@@ -30,16 +30,15 @@ def main(argv):
 		elif opt in ("-v", "--verbose"):
 			verbose = True
 
-	train(max_iteration, init_learning_rate, gradientStop, verbose)
-	
+	wStar = train(max_iteration, init_learning_rate, gradientStop, verbose)
 
-def test(testing, w):
+def test(w, x, y):
 	print '====test======'
 	print 'test w=', w
+	result = x.dot(w)
 	for i in range(5):
-		print 'expected=', testing['PM2.5'][i]
-		test = testing.iloc[i,:]
-		print 'answer= ', w.dot(test)
+		print 'expected=', y[i]
+		print 'answer= ', result[i]
 	print '  '
 
 def train(max_iteration, init_learning_rate, gradientStop, verbose):
@@ -81,6 +80,30 @@ def train(max_iteration, init_learning_rate, gradientStop, verbose):
 
 	print '#x', x.shape[0], '#y', y.shape[0]
 
+	# TODO 
+	# prepare testing data
+	days = df[u'日期'].unique()
+	days = days[-3:]
+	frames = []
+	for day in days:
+		dfByDay = df[df[u'日期'].isin([day]) & df[u'測項'].isin(factors)].iloc[:, 3:]
+		dfByDay.index = factors
+		frames.append(dfByDay)
+	testing = pd.concat(frames, axis = 1)
+	testing = testing.T
+
+	# 取九小時資料排成一排
+	m = testing.shape[0]
+	d = {}
+	for i in range(0, m-8):
+		px = testing.iloc[i:i+9]
+		px = px.T.values.flatten()
+		d[i] = px
+	tx = pd.DataFrame(d).T
+	tx['b'] = 1
+	ty = testing[8:]['PM2.5']
+	print '#tx', tx.shape[0], '#ty', ty.shape[0]
+
 	# 取1小時資料排成一排
 	# x = training[:-1]
 	# y = training['PM2.5'][1:]
@@ -91,6 +114,9 @@ def train(max_iteration, init_learning_rate, gradientStop, verbose):
 	#w = np.array([ 0.12668465  ,0.73373688  ,0.00877731  ,0.75455953 ,0.92578519])
 	w = np.ones(len(factors)*9 + 1)
 	wStar = gradient_descent(w, x, y, max_iteration, init_learning_rate, gradientStop, verbose)
+
+	test(wStar, tx, ty)
+	return wStar
 
 def gradient_descent(w, x, y, max_iteration, init_learning_rate, gradientStop, verbose):
 
@@ -105,19 +131,22 @@ def gradient_descent(w, x, y, max_iteration, init_learning_rate, gradientStop, v
 	Errors_history = []
 	gradientChange = 1
 	m = x.shape[0]
+	
+	# L = SUM[ ( w.X - y )^2 ]
+	# to save "-1" operation
 	while True :
 		loop = loop + 1
 
-		error = np.subtract(y, x.dot(w))
-		dw = np.dot(error, -x) / m
+		error = np.subtract(x.dot(w), y)
+		dw = np.dot(error, x) / m
 		gradientChange = np.dot(dw, dw)
 		w = w - dw * rate
 		#rate = init_rate
 		L = np.sqrt(np.dot(error, error))
 		L_history.append(L)
 
-		if(verbose and loop % 10 == 0):
-			er = np.fabs(error / y)
+		if(verbose and loop % 100 == 0):
+			er = np.divide(np.fabs(error), y)
 			er = er[~np.isinf(er)]
 			errorRate = np.average(er)
 			print 'iter #',loop,' Lost= ', L, 'error', errorRate, 'rate= ', rate, 'gradient', gradientChange
