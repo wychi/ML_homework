@@ -44,15 +44,18 @@ def test(testing, w):
 
 def train(max_iteration, init_learning_rate, gradientStop, verbose):
 	df = pd.read_csv('./data/train.csv', na_values='NR', encoding='big5')
-	days = df[u'日期'].unique()[:5]
+
+	# TODO n-ford
+	days = df[u'日期'].unique()
+	days = days[:days.shape[0] / 5]
 	# delete('RAINFALL')
 	factors = df[u'測項'].unique()
 	factors = np.delete(factors, 10)
 
 	# order matters
-	# days = ['2014/1/1']
+	#days = ['2014/1/1', '2014/1/2']
 	#factors = [u'PM10', u'PM2.5']
-	factors = [u'PM10', u'PM2.5', u'WIND_DIREC', u'WIND_SPEED']
+	factors = [u'PM10', u'PM2.5', u'NO2']
 
 	print factors
 	print days
@@ -64,24 +67,30 @@ def train(max_iteration, init_learning_rate, gradientStop, verbose):
 		frames.append(dfByDay)
 	training = pd.concat(frames, axis = 1)
 	training = training.T
-	training['b'] = 1
 
-	x = training[:-1]
-	y = training['PM2.5'][1:]
+	# 取九小時資料排成一排
+	m = training.shape[0]
+	d = {}
+	for i in range(0, m-8):
+		x = training.iloc[i:i+9]
+		x = x.T.values.flatten()
+		d[i] = x
+	x = pd.DataFrame(d).T
+	x['b'] = 1
+	y = training[8:]['PM2.5']
+
+	print '#x', x.shape[0], '#y', y.shape[0]
+
+	# 取1小時資料排成一排
+	# x = training[:-1]
+	# y = training['PM2.5'][1:]
 
 	# [w1, w2, w3, ..., b]
 	#w = np.random.rand( len(factors) + 1)
 	#w= np.array([  0.70403291, 11.17861785])
 	#w = np.array([ 0.12668465  ,0.73373688  ,0.00877731  ,0.75455953 ,0.92578519])
-	w = np.ones(len(factors) + 1)
-
+	w = np.ones(len(factors)*9 + 1)
 	wStar = gradient_descent(w, x, y, max_iteration, init_learning_rate, gradientStop, verbose)
-	validate(wStar, x, y)
-
-def validate(w, x, y):
-	error = np.subtract(y, x.dot(w))
-	errorRate = error / y;
-	print 'error rate', np.average(np.fabs(errorRate))
 
 def gradient_descent(w, x, y, max_iteration, init_learning_rate, gradientStop, verbose):
 
@@ -93,20 +102,26 @@ def gradient_descent(w, x, y, max_iteration, init_learning_rate, gradientStop, v
 	print '---- start -----'
 
 	L_history = []
+	Errors_history = []
 	gradientChange = 1
+	m = x.shape[0]
 	while True :
 		loop = loop + 1
+
 		error = np.subtract(y, x.dot(w))
-		dw = np.dot(error, -x)
+		dw = np.dot(error, -x) / m
 		gradientChange = np.dot(dw, dw)
 		w = w - dw * rate
 		#rate = init_rate
 		L = np.sqrt(np.dot(error, error))
-		
+		L_history.append(L)
+
 		if(verbose and loop % 10 == 0):
-			errorRate = np.average(np.fabs(error / y))
+			er = np.fabs(error / y)
+			er = er[~np.isinf(er)]
+			errorRate = np.average(er)
 			print 'iter #',loop,' Lost= ', L, 'error', errorRate, 'rate= ', rate, 'gradient', gradientChange
-			L_history.append(L)
+			Errors_history.append(errorRate)
 
 		if(loop > max_iteration):
 			print 'stop. exceed max iteration'
@@ -120,8 +135,16 @@ def gradient_descent(w, x, y, max_iteration, init_learning_rate, gradientStop, v
 
 	print '---- end -----'
 
-	# plt.plot(L_history[3:])
-	# plt.show()
+	for i in xrange(len(L_history)):
+		if L_history[i] > 3000:
+			L_history[i] = 3000
+
+	plt.figure(1)
+	plt.plot(L_history)
+	plt.savefig('loss.png')
+	plt.figure(2)
+	plt.plot(Errors_history)
+	plt.savefig('error_rate.png')
 
 	return w
 
